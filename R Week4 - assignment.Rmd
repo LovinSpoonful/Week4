@@ -1,0 +1,101 @@
+---
+title: "Week4 - Assignment"
+author: Rob Hodde
+date: 11/22/15
+output: html_document
+---
+
+Week 4 Assignment
+Your assignment should be published to RPubs.com. Place your script in a public repository on GitHub and submit
+a link to the URL here.
+
+Exploratory Data Analysis in R. Choose an interesting dataset and use R graphics to describe the data. You may
+use base R graphics, or a graphics package of your choice. You should include at least one example of each of the
+following:
+. histogram
+. boxplot
+. scatterplot
+Do the graphics provide insight into any relationships in the data?
+You may use R code that already exists in a book or a web site as a starting point for your work. You need to cite
+your source, and you need to clearly delineate what you were given to start with, and what is your own original
+analysis, so that your grade can be based on your own work!
+This is an open-ended assignment. Full credit will be given for any reasonable effort, but as with most technical
+learning work, the more sustained effort over time that you invest, the more you will get out of it.
+If you don't know where to start, there is a list of over 700 R datasets here:
+http://vincentarelbundock.github.io/Rdatasets/. You can of course also load data from another source, such as a
+.CSV file. You'll want to pick a dataset where it makes sense to use histograms, boxplots, and scatterplots.
+
+Data Sources:
+
+All about Eve: http://eve-marketdata.com/developers/mysql.php
+
+Regions: http://www.eve-search.com/thread/1052168/page/1
+
+Products: http://dl.eve-files.com/media/1202/TypeIDs.txt
+
+Daily Sales Summary:  http://eve-marketdata.com/reports.php?step=DailySales
+
+I have built a mySQL database from the data sources above, and composed two views used below for plotting.  I do not know how to move my database to the cloud so that you can actually run this code.  If this is a problem, please let me know. 
+
+
+
+The following histogram shows the extent to which products and commodity prices on the MMORGP "Eve Online - Region "The Forge" have varied over the past 30 days. 
+
+
+```{r}
+
+ # use the R ODBC package to establish a connection to mySQL database and select records into data frames
+ require(RODBC)
+ cnString <- "MySQL_ANSI;SERVER=localhost;DATABASE=eve;UID=root;PASSWORD=CUNYRBridge4!;OPTION=3;"  # how to load the db to cloud?
+ db <- odbcConnect(cnString)
+ 
+ # download the mySQL view records
+ df <- sqlQuery(db,"SELECT * FROM vw_top100_theforge_30days", stringsAsFactors = FALSE)  
+
+ # look at just two fields, so we can plot a histogram
+ subdf <- subset(df,Price_Range_Percent < 70, select = c(Total_Spend, Price_Range_Percent))  
+ 
+ # create a histogram that illustrates the distribution of total price range for past 30 days 
+ hist(subdf$Price_Range_Percent, main = "Eve Forge - Top 100 Products - Monthly Price Spreads", xlab = "Price Range Percent (Min to Max)")
+```
+
+
+
+Next we will look at pricing for one of the most popular and somewhat price-volatile products on Eve today - the Gecko heavy drone.
+
+
+```{r}
+ 
+
+ # download the mySQL view records
+ df <- sqlQuery(db,"SELECT * FROM vw_gecko_theforge_30days", stringsAsFactors = FALSE)  
+ 
+plot(price_average ~ date, data = df)
+ 
+ 
+```
+ 
+The plot above illustrates that the price has steadily declined over the past 30 days.  We can also see that there isn't a visible relationship between daily order volume (quantity) and price:
+
+```{r}
+
+plot(price_average ~ quantity, data = df)
+
+```
+
+
+Next we will use the boxplot:
+
+```{r}
+
+boxplot(df$price_average)
+
+```
+
+What's interesting about this boxplot is that it quickly tells the user, "If you purchased a Gecko in November for 78-86 billion, you did alright.  Otherwise, you either paid too much, or got a sweet bargain. 
+
+
+
+
+
+
