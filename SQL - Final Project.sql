@@ -3,12 +3,13 @@
 -- Rob Hodde
 -- 11/27/2015
 
--- All data sourced from:
--- http://eve-marketdata.com/developers/mysql.php
+-- All data sourced from http://eve-marketdata.com/developers/mysql.php
+-- I first used the scripts available from the site to build a local Eve database, then wrote queries
+-- against that database to provide the summary data included in this project.
 
--- Eve is a massively multiplayer online role playing game (MMORPG or MMO) with millions of players around the world
--- it has the most sophisticated market economy of any MMO spanning many regions of the universe.
--- We will look at buying and selling activity of Ice Products across the regions
+-- Eve is a massively multiplayer online role playing game (MMORPG or MMO) with millions of players around the world.
+-- It has the most sophisticated market economy of any MMO spanning many regions of the universe.
+-- We will look at buying and selling activity of Ice Products across the regions.
 
 -- I have restructured the project somewhat, in some cases adding more layers of information,
 -- and in others, consolidating multiple questions into single queries where I thought it elegant or more compact to do so. 
@@ -27,8 +28,8 @@ USE eve2;
 
 --  (2) 
 
--- Create and populate the market groups table
--- the following is a tiny sample of the more than 2000 market groups on Eve, from the Materials group
+-- Create and populate the market groups table.
+-- The following is a tiny sample of the more than 2000 market groups on Eve, from the Materials group.
 DROP TABLE IF EXISTS `eve2`.`tbl_marketgroup`;
 
 CREATE TABLE `eve2`.`tbl_marketgroup` (
@@ -53,8 +54,8 @@ INSERT INTO `eve2`.`tbl_marketgroup` VALUES
 ('1861', 'Salvage Materials', ''),
 ('1897', 'Faction Materials', '');
 
--- Create and populate the items (things people buy and sell) table
--- this is a tiny subset of the 8000 + items traded on Eve, from the Minerals and Ice Products market groups
+-- Create and populate the items (things people buy and sell) table.
+-- This is a tiny subset of the 8000 + items traded on Eve, from the Minerals and Ice Products market groups (part of Materials).
 DROP TABLE IF EXISTS `eve2`.`tbl_item`;
 
 CREATE TABLE `eve2`.`tbl_item` (
@@ -87,7 +88,7 @@ INSERT INTO `eve2`.`tbl_item` VALUES
 
 --  (3) 
 
--- DEMO: this query shows the relationship between Market Groups and individual Items that are traded on Eve
+-- DEMO: This query shows the relationship between Market Groups and individual Items that are traded on Eve.
 SELECT m.marketgroup_name, m.description, i.item_name, i.description
 FROM `eve2`.`tbl_Item` i INNER JOIN `eve2`.`tbl_marketgroup` m ON i.marketgroup_id = m.marketgroup_id
 ORDER BY m.marketgroup_name, i.item_name;
@@ -96,8 +97,8 @@ ORDER BY m.marketgroup_name, i.item_name;
 
 --  (4)
 
--- Eve is broken up into a 64 regions, which are very large, like galaxies
--- each region can support millions of players
+-- Eve is broken up into a 64 regions, which are very large, like galaxies.
+-- Each region can support millions of players.
 
 -- Create and populate the region table
 DROP TABLE IF EXISTS `eve2`.`tbl_region`;
@@ -178,9 +179,9 @@ PRIMARY KEY (`region_id`));
 
 --  (6)  
 
--- here is a summary of open Bids (offers to buy) by region and item 
--- (Note: to make this more challenging, and to avoid denormalization, the market group id is not duplicated in this table)
--- also for brevity, the bid/ask info below comes from a single market group - Ice Products
+-- The following is a summary of open bids (offers to buy) by region and item for Ice Products. 
+-- (Note: to make this more challenging, and to avoid denormalization, the market group id is not duplicated in this table.)
+
 
 DROP TABLE IF EXISTS `eve2`.`tbl_buy`;
 
@@ -482,9 +483,10 @@ INSERT INTO `eve2`.`tbl_buy` VALUES
 ('17889', '10000043', '12684', '604'),
 ('17889', '10000002', '130628', '668');
 
--- here is a summary of open Offers (offers to sell) by region and item  
--- note: the Eve Market Data Relay separates the buy and sell open order details into two tables
--- but they really should be placed in one table, with a Buy/Sell code indicating the order type (Bid or Ask)
+-- Below is a summary of open offers (to sell) by region and item. 
+-- Note: The Eve Market Data Relay separates the buy and sell open order details into two tables
+-- but they really should be placed in one table, with a Buy/Sell code indicating the order type (Bid or Ask).
+-- I'll do this in the junction table below.
 
 DROP TABLE IF EXISTS `eve2`.`tbl_sell`;
 
@@ -765,7 +767,7 @@ INSERT INTO `eve2`.`tbl_sell` VALUES
 
 --  (5,7,8)
 
--- now we will create a junction table, listing all regions that trade in our two target market groups
+-- Now we will create a junction table, listing all regions that trade Ice Products.
 DROP TABLE IF EXISTS `eve2`.`tbl_region_item`;
 
 CREATE TABLE `eve2`.`tbl_region_item` (
@@ -774,24 +776,24 @@ CREATE TABLE `eve2`.`tbl_region_item` (
 `buy_sell_code`   char(1) NOT NULL, 
 PRIMARY KEY (`region_id`,`item_id`, `buy_sell_code`));
 
--- NOTE: this statement allows us to forego specifying the database schema.  below, we will use this for brevity
+-- NOTE: This statement allows us to forego specifying the database schema.  We will take advantage of this from now on, for brevity.
 USE eve2;   
 
---  first we will send the buying by region data to the junction table:
+--  Place the summary buying data by region in the junction table:
 INSERT INTO tbl_region_item
 SELECT  b.region_id, i.item_id, 'b' AS buy_sell_code
 FROM tbl_item i INNER JOIN tbl_buy b ON i.item_id = b.item_id	
 GROUP BY b.region_id, i.Item_id;
 
---  next send the selling by region data to the junction table:
+--  Next place the summary selling data by region in the junction table:
 INSERT INTO tbl_region_item
 SELECT  b.region_id, i.item_id, 's' AS buy_sell_code
 FROM tbl_item i INNER JOIN tbl_sell b ON i.item_id = b.item_id	
 GROUP BY b.region_id, i.item_id;
 
--- display how many distinct items each region buys and sells in the targeted market group(s)
--- note: for this exercise we've limited to only one market group (Ice Products) but we could easily include more, or all of them, 
---       using the same db structures and query
+-- Select how many distinct items each region buys and sells.
+-- Note: For this exercise we've limited to only one market group (Ice Products) but we could easily include more, or all of them, 
+--       using the same db structures and query.
 SELECT r.region_name, m.marketgroup_name, 
        sum(CASE WHEN ri.buy_sell_code = 's' THEN 1 ELSE 0 END) Items_Region_Sells,
 	   sum(CASE WHEN ri.buy_sell_code = 'b' THEN 1 ELSE 0 END) Items_Region_Buys
@@ -801,13 +803,13 @@ LEFT JOIN tbl_item i ON ri.item_id = i.item_id
 INNER JOIN tbl_marketgroup m ON i.marketgroup_id = m.marketgroup_id
 GROUP BY r.region_Name, m.marketgroup_name;
 
--- result: We can see that Querious is the only region that does not sell any Ice Products
+-- Note that Querious is the only region that does not sell any Ice Products.
 
 
 
 
 
---   (9)  Add foreign keys where appropriate
+--   (9)  Add foreign keys where appropriate.
    
 ALTER TABLE tbl_item
 ADD FOREIGN KEY fk_marketgroup(marketgroup_id)
