@@ -63,8 +63,8 @@ CREATE TABLE `eve2`.`tbl_item` (
 `marketgroup_id`  int(11) NOT NULL,
 `item_name`       char(100) NULL,
 `description`     char(255) NULL,
-`JITA_price_sell` decimal(18,9) NULL,
-`JITA_price_buy`  decimal(18,9) NULL, 
+`JITA_price_sell` decimal(9,2) NULL,
+`JITA_price_buy`  decimal(9,2) NULL, 
 PRIMARY KEY (`item_id`));
 
 INSERT INTO `eve2`.`tbl_item` VALUES
@@ -189,7 +189,7 @@ CREATE TABLE `eve2`.`tbl_buy` (
 `item_id`      int(11) NOT NULL,
 `region_id`    int(11) NOT NULL,
 `kunits_avail` int(11) NULL,
-`avg_price`    decimal(19,9),
+`avg_price`    decimal(9,2),
 PRIMARY KEY (`item_id`,`region_id`));
 
 INSERT INTO `eve2`.`tbl_buy` VALUES 
@@ -494,7 +494,7 @@ CREATE TABLE `eve2`.`tbl_sell` (
 `item_id`      int(11) NOT NULL,
 `region_id`    int(11) NOT NULL,
 `kunits_avail` int(11) NULL,
-`avg_price`    decimal(19,9),
+`avg_price`    decimal(9,2),
 PRIMARY KEY (`item_id`,`region_id`));
 
 INSERT INTO `eve2`.`tbl_sell` VALUES 
@@ -772,7 +772,7 @@ DROP TABLE IF EXISTS `eve2`.`tbl_region_item`;
 
 CREATE TABLE `eve2`.`tbl_region_item` (
 `region_id`       int(11) NOT NULL,
-`item_id`  int(11) NOT NULL,
+`item_id`         int(11) NOT NULL,
 `buy_sell_code`   char(1) NOT NULL, 
 PRIMARY KEY (`region_id`,`item_id`, `buy_sell_code`));
 
@@ -807,8 +807,60 @@ GROUP BY r.region_Name, m.marketgroup_name;
 
 
 
+-- because this idiotic sql engine doesn't have cte's or rowNum, we have to create another table with the top 100 trading opportunities
+
+DROP TABLE IF EXISTS `eve2`.`tbl_top_trades`;
+
+CREATE TABLE `eve2`.`tbl_top_trades` (
+`trade_rank`        int(11) NOT NULL,
+`item_id`           int(11) NULL,
+`buy_region_id`     int(11) NULL,
+`buy_kunits_avail`  int(11) NULL,
+`buy_avg_price`     decimal(9,2),
+`sell_region_id`    int(11) NULL,
+`sell_kunits_avail` int(11) NULL,
+`sell_avg_price`    decimal(9,2),
+`unit_margin`       decimal(9,2),
+PRIMARY KEY (`trade_rank`));
 
 
+INSERT INTO tbl_top_trades
+
+SELECT @r := @r+1 trade_rank, z.* from(
+
+SELECT i.item_id, r.region_id buy_region_id, b.kunits_avail buy_kunits_avail, b.avg_price buy_avg_price, 
+       r2.region_id sell_region_id, s.kunits_avail sell_kunits_avail, s.avg_price sell_avg_price, (b.avg_price - s.avg_price) unit_margin
+
+FROM tbl_region_item ri
+INNER JOIN tbl_Region r ON r.region_id = ri.region_id
+INNER JOIN tbl_Item i ON i.item_id = ri.item_id
+INNER JOIN tbl_buy b ON b.region_id = ri.region_id AND b.item_id = ri.item_id
+
+INNER JOIN tbl_region_item ri2 ON ri2.item_id = ri.item_id 
+INNER JOIN tbl_region r2 ON r2.region_id = ri2.region_id
+INNER JOIN tbl_sell s ON s.region_id = ri2.region_id AND s.item_id = ri2.item_id
+
+WHERE ri.buy_sell_code = 'b' AND ri2.buy_sell_code = 's' AND ri.region_id <> ri2.region_id
+AND s.kunits_avail > 100 AND b.kunits_avail > 100
+ORDER BY (s.avg_price - b.avg_price) 
+limit 100
+
+)z, (select @r:=0)y;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 --   (9)  Add foreign keys where appropriate.
    
 ALTER TABLE tbl_item
@@ -853,4 +905,4 @@ REFERENCES tbl_item(item_id)
 ON DELETE NO ACTION
 ON UPDATE CASCADE;
    
-
+*/
