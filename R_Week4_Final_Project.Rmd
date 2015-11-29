@@ -1,0 +1,134 @@
+---
+title: "Week4 - Final Project"
+author: "Rob Hodde"
+date: "November 29, 2015"
+output: html_document
+---
+
+***
+
+###Summary:
+
+This project is where you show off your ability to   
+   (1) use R packages,  
+   (2) change the shape of data in a data frame, and   
+   (3) provide basic summary statistics and graphics as part of your exploratory data analysis.   
+
+Design and populate tables in SQL, then export the data into R and create some basic explanatory data analysis.   
+
+  . You should perform some basic transformations on the data frame, such as including only a subset of columns,
+created one or more new derived columns (such as flight date), and/or filtering out rows.   
+
+  . You should then create basic summary statistics. You should create at least one interesting question for
+analysis, and answer the question using two or more graphics in R.   
+
+
+***
+
+**Sources:**
+
+Eve Data Relay:  http://eve-marketdata.com/developers/mysql.txt   
+
+The database I created for this project is here:        https://raw.githubusercontent.com/LovinSpoonful/Week4/1a93612a5a7b0cbb740b931a555b75b5830f59e8/SQL%20-%20Final%20Project.sql
+
+MySQL Tricks:  http://stackoverflow.com/questions/1895110/row-number-in-mysql  -- emulates ROW_NUMBER but not capable of partitioning.   
+
+R Tricks:  http://harding.edu/fmccown/r/#barcharts   
+
+
+***
+
+
+###Question:
+
+An interesting question to aspiring Eve Online players the world over is, "How do I **get rich quick** on Eve, so I can buy lots of cool ships, run daring missions, and get really famous?" 
+
+The short answer to that question is, "You don't." However, there is some interesting data available from the Eve Data Relay that might be leveraged to help expedite the process.   
+
+***
+
+###Solution:
+   
+Establish a connection to the mySQL database.
+
+```{r}
+
+# use the R ODBC package to establish a connection to mySQL database and select records into data frames
+require(RODBC)
+cnString <- "MySQL_ANSI;SERVER=localhost;DATABASE=eve2;UID=root;PASSWORD=CUNYRBridge4!;OPTION=3;"
+db <- odbcConnect(cnString)
+
+```
+
+
+Since most Eve noobs live in The Forge region, let's first look at things we can buy at The Forge and sell in another region.
+
+```{r}
+
+df <- sqlQuery(db,"SELECT item_name, avg(unit_margin) unit_margin FROM vw_top_trades WHERE sell_region_name = 'The Forge' GROUP BY item_name", stringsAsFactors = FALSE)  
+
+print(df)
+
+```
+
+As might be expected, only one item - Nitrogen Isotopes - is readily available at The Forge which can be sold for a large profit elsewhere.  Let's find out where we can sell this commodity at a good profit.   
+
+```{r}
+
+df <- sqlQuery(db,"SELECT buy_region_name, buy_avg_price, buy_kunits_avail, unit_margin FROM vw_top_trades WHERE sell_region_name = 'The Forge'", stringsAsFactors = FALSE)  
+
+print(df)
+
+```
+
+   
+OK, to our further chagrin, only one region - Immensea - needs Nitrogen Isotopes, and only a fairly small quantity.  If we fulfilled every single order, we would gross about 6.4 million ISK (212 k-units x 3016 ISK Margin), which is a very small amount of money on Eve.  For reference, a PLEX (30 day license to play Eve) costs 1 billion ISK.   
+
+So this might be very discouraging to a new player.   
+
+Next question: "If not at The Forge, in which regions can I buy more trade-worthy items?"   
+
+Let's look at all the regions with at least five excellent trade opportunities:   
+
+```{r}
+
+df <- sqlQuery(db,"SELECT sell_region_name, COUNT(1) sell_items FROM vw_top_trades  GROUP BY sell_region_name HAVING COUNT(1) >= 5 ORDER BY COUNT(1) DESC", stringsAsFactors = FALSE)  
+
+print(df)
+
+barplot(df$sell_items,main="Trade-Worthy Items by Region",horiz=TRUE, col=heat.colors(nrow(df)), legend = df$sell_region_name)
+
+```
+
+Now we are getting somewhere.  Let's look at the Cobalt Edge region in more detail.   
+
+
+```{r}
+
+df <- sqlQuery(db,"SELECT * FROM vw_top_trades WHERE sell_region_name = 'Cobalt Edge'", stringsAsFactors = FALSE)  
+
+print(df)
+
+```
+
+Looks like Cobalt Edge has lots of Strontium Clathrates for sale, with buyers in many regions at a good profit.  
+
+```{r}
+
+dfb <- subset(df,sell_kunits_avail > 2000, select = c(buy_region_name, unit_margin))  
+
+barplot(dfb$unit_margin,main="K-Unit Margin By Region",horiz=TRUE, col=heat.colors(nrow(dfb)), legend = dfb$buy_region_name)
+
+
+```
+
+**Answer:**   
+
+It looks like the best way to get started making money in Eve is to go to Cobalt Edge, buy a bunch of Strontium Clathrates, ferry them over to The Forge, and sell them for a tidy profit of 280 ISK per k-unit.   
+
+One doesn't simply login to Eve and do this, which opens the door for many follow-up research questions about the various steps one might take to achieve the objective.
+
+
+
+
+
