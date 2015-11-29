@@ -29,7 +29,8 @@ analysis, and answer the question using two or more graphics in R.
 
 Eve Data Relay:  http://eve-marketdata.com/developers/mysql.txt   
 
-The database I created for this project is here:        https://raw.githubusercontent.com/LovinSpoonful/Week4/1a93612a5a7b0cbb740b931a555b75b5830f59e8/SQL%20-%20Final%20Project.sql
+The database for this project is here:   
+https://raw.githubusercontent.com/LovinSpoonful/Week4/e9c94119c4f22e23a08bbddab66c378f2a6e1e11/SQL%20-%20Final%20Project2.sql
 
 MySQL Tricks:  http://stackoverflow.com/questions/1895110/row-number-in-mysql  -- emulates ROW_NUMBER but not capable of partitioning.   
 

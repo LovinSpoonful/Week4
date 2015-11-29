@@ -1,0 +1,7 @@
+name: Publish Document
+account: rpubs
+server: rpubs.com
+bundleId:
+        https://api.rpubs.com/api/v1/document/131702/1697538ed1f8430ba0d12b7cc1777522
+url: http://rpubs.com/LovinSpoonful/131702
+when: 1448819520.47887
